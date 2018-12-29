@@ -18,7 +18,6 @@ public class LocationHandler {
     private double[] loc = new double[2];
 
     public LocationHandler(Activity act){
-
         this.activity = act;
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
         if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(act, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -29,8 +28,8 @@ public class LocationHandler {
                 ActivityCompat.requestPermissions(act,
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION},MY_PERMISSIONS_ACCESS_FINE_LOCATION);
             }
+            System.out.println("reached here");
             mFusedLocationClient.getLastLocation().addOnSuccessListener(act, new OnSuccessListener<Location>() {
-
                 @Override
                 public void onSuccess(Location location) {
                     // Got last known location. In some rare situations this can be null.

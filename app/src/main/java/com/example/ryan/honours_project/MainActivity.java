@@ -1,11 +1,17 @@
 package com.example.ryan.honours_project;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 
+import org.osmdroid.api.IMapController;
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 
 import java.util.Arrays;
@@ -25,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
             double[] starting = loc.getLoc();
             System.out.println(Arrays.toString(loc.getLoc()));
 
-            /*Context ctx = getApplicationContext();
+            Context ctx = getApplicationContext();
             Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
             map = (MapView) findViewById(R.id.map);
             map.setTileSource(TileSourceFactory.MAPNIK);
@@ -34,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
             IMapController mapController = map.getController();
             mapController.setZoom(9.5);
             GeoPoint startPoint = new GeoPoint(starting[1], starting[0]); //51.509865,-0.118092);
-            mapController.setCenter(startPoint);*/
+            mapController.setCenter(startPoint);
         }
     }
 
