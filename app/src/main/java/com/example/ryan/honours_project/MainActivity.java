@@ -28,8 +28,6 @@ public class MainActivity extends AppCompatActivity {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
             LocationHandler loc = new LocationHandler(this);
-            double[] starting = loc.getLoc();
-            System.out.println(Arrays.toString(loc.getLoc()));
 
             Context ctx = getApplicationContext();
             Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
@@ -38,13 +36,13 @@ public class MainActivity extends AppCompatActivity {
             map.setBuiltInZoomControls(true);
             map.setMultiTouchControls(true);
             IMapController mapController = map.getController();
-            mapController.setZoom(9.5);
-            GeoPoint startPoint = new GeoPoint(starting[1], starting[0]); //51.509865,-0.118092);
+            mapController.setZoom(15);
+            GeoPoint startPoint = new GeoPoint(55.8642, -4.2518); //51.509865,-0.118092);
             mapController.setCenter(startPoint);
         }
     }
 
-    /*public void onResume(){
+    public void onResume(){
         super.onResume();
         //this will refresh the osmdroid configuration on resuming.
         //if you make changes to the configuration, use
@@ -60,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
         map.onPause();  //needed for compass, my location overlays, v6.0.0 and up
-    }*/
+    }
 
     public boolean checkpermissions(){
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
