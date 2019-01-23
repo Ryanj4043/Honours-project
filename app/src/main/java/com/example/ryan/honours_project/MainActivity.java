@@ -106,8 +106,9 @@ public class MainActivity extends AppCompatActivity {
 
         //creation and management of the maps openning view
         final IMapController mapController = map.getController();
+        GeoPoint startpoint = new GeoPoint(55.864237, -4.251806);
         mapController.setZoom(15);
-
+        mapController.setCenter(startpoint);
 
         //adds an overlay to the users location
         this.mLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(ctx), map);
