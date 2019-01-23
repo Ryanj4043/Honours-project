@@ -14,13 +14,6 @@ import static org.junit.Assert.*;
 public class ExampleUnitTest {
     @Test
     public void addition_isCorrect() {
-        Activity act = new MainActivity();
-        LocationHandler loc =  new LocationHandler(act);
-        double[] x = loc.getLoc();
-        double[] y = new double[2];
-        y[0] = -0.118092;
-        y[1] = 51.5074;
 
-        assertEquals(y, x);
     }
 }
