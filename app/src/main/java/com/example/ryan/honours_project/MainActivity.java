@@ -1,14 +1,22 @@
 package com.example.ryan.honours_project;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Context;
 import android.content.IntentSender;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
 
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -22,7 +30,11 @@ import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.miguelcatalan.materialsearchview.MaterialSearchView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
@@ -31,6 +43,8 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
+import java.io.IOException;
+import java.net.URLEncoder;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -46,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
     private LocationRequest requests = LocationRequest.create();
     boolean mRequestingLocationUpdates;
     private DAO dao ;
+    MaterialSearchView searchView;
+    ListView lstView;
 
 
     @SuppressLint("MissingPermission")
@@ -103,6 +119,71 @@ public class MainActivity extends AppCompatActivity {
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setBuiltInZoomControls(true);
         map.setMultiTouchControls(true);
+
+        //searchbar setup
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("Haptic Map Navigation");
+        toolbar.setTitleTextColor(Color.parseColor("#FFFFFF"));
+
+        //output handling
+        lstView = findViewById(R.id.lstView);
+        lstView.setVisibility(View.GONE);
+        searchView = findViewById(R.id.search_view);
+        searchView.setOnSearchViewListener(new MaterialSearchView.SearchViewListener() {
+            @Override
+            public void onSearchViewShown() {
+
+            }
+
+            @Override
+            public void onSearchViewClosed() {
+                lstView.setVisibility(View.GONE);
+            }
+        });
+
+        searchView.setOnQueryTextListener(new MaterialSearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                System.out.println(query);
+                String updatedQuery = URLEncoder.encode(query);
+                System.out.println(updatedQuery);
+
+                String[] output = new String[10];
+                try {
+                    output = dao.getGeoCode(getcoords(),query, MainActivity.this);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                //setUpList();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+
+        });
+
+        lstView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                lstView.setVisibility(view.GONE);
+                String destination = ((TextView)view).getText().toString();
+
+                // do the route getting display and UI changes into travel mode
+                // set zoom much lower to user, option for search, add end routing mode
+                // set up OSMbonus droid
+
+                System.out.println(destination);
+            }
+        });
+
 
         //creation and management of the maps openning view
         final IMapController mapController = map.getController();
@@ -211,6 +292,20 @@ public class MainActivity extends AppCompatActivity {
         output[0] = mCurrentLocation.getLongitude();
         output[1] = mCurrentLocation.getLatitude();
         return output;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.menu_item,menu);
+        MenuItem item = menu.findItem(R.id.action_search);
+        searchView.setMenuItem(item);
+        return true;
+    }
+
+    public void setUpList(String[] input){
+        lstView.setVisibility(View.VISIBLE);
+        ArrayAdapter adapter = new ArrayAdapter (MainActivity.this,android.R.layout.simple_list_item_1,input);
+        lstView.setAdapter(adapter);
     }
 
 }
