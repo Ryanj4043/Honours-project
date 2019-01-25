@@ -27,8 +27,7 @@ public class DAO {
 
     }
 
-    public String[] getGeoCode(double[] start, String input, final Context context) throws IOException, JSONException {
-        final JSONObject[] output = {null};
+    public void getGeoCode(double[] start, String input, final Context context) throws IOException, JSONException {
         input = input + "," + String.valueOf(start[0]) + "," + String.valueOf(start[1]);
         String url = urlBuilder(input, "geocode");
         final String[] geocode = new String[10];
@@ -39,9 +38,9 @@ public class DAO {
                     @Override
                     public void onResponse(String response) {
                         try {
-                            output[0] = new JSONObject(response);
+                            JSONObject output = new JSONObject(response);
 
-                            JSONArray arr = output[0].getJSONArray("features");
+                            JSONArray arr = output.getJSONArray("features");
                             for(int i = 0; i < arr.length(); i++){
                                 geocode[i] = arr.getJSONObject(i).getJSONObject("properties").getString("label")+ ";" + arr.getJSONObject(i).getJSONObject("properties").getString("distance") + ";" + arr.getJSONObject(i).getJSONObject("geometry").getJSONArray("coordinates").getDouble(1) +"," + arr.getJSONObject(i).getJSONObject("geometry").getJSONArray("coordinates").getDouble(0) ;
                                 System.out.println(geocode[i]);
@@ -64,19 +63,19 @@ public class DAO {
         queue.add(stringRequest);
 
 
-        return geocode;
     }
 
-    public JSONObject getRoute(double[] start, double[] destination){
-        JSONObject output = null;
-        String input = String.valueOf(start[1]) + "," + String.valueOf(start[0]) + "|" + String.valueOf(destination[1]) + "," + String.valueOf(destination[0]);
+    public void getRoute(double[] start, double[] destination, final Context context){
+
+        String input = String.valueOf(start[0]) + "," + String.valueOf(start[1]) + "|" + String.valueOf(destination[1]) + "," + String.valueOf(destination[0]);
         String url = urlBuilder(input, "directions");
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        System.out.println(response);
+                        MainActivity ma = (MainActivity)context;
+                        ma.setUpKML(response);
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -88,8 +87,6 @@ public class DAO {
         // Add the request to the RequestQueue.
         queue.add(stringRequest);
 
-
-        return output;
     }
 
 

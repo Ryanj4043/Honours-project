@@ -6,6 +6,7 @@ import android.content.IntentSender;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -32,14 +33,17 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.miguelcatalan.materialsearchview.MaterialSearchView;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.osmdroid.api.IMapController;
+import org.osmdroid.bonuspack.kml.KmlDocument;
+import org.osmdroid.bonuspack.routing.OSRMRoadManager;
+import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.FolderOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
@@ -62,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private DAO dao ;
     MaterialSearchView searchView;
     ListView lstView;
+    RoadManager roadManager;
+    KmlDocument kmlDocument;
 
 
     @SuppressLint("MissingPermission")
@@ -81,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
                 startLocationUpdates();
             }
         });
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
 
         task.addOnFailureListener(this, new OnFailureListener() {
             @Override
@@ -130,10 +138,11 @@ public class MainActivity extends AppCompatActivity {
         lstView = findViewById(R.id.lstView);
         lstView.setVisibility(View.GONE);
         searchView = findViewById(R.id.search_view);
+        searchView.setVisibility(View.GONE);
         searchView.setOnSearchViewListener(new MaterialSearchView.SearchViewListener() {
             @Override
             public void onSearchViewShown() {
-
+                searchView.setVisibility(View.VISIBLE);
             }
 
             @Override
@@ -149,9 +158,9 @@ public class MainActivity extends AppCompatActivity {
                 String updatedQuery = URLEncoder.encode(query);
                 System.out.println(updatedQuery);
 
-                String[] output = new String[10];
+
                 try {
-                    output = dao.getGeoCode(getcoords(),query, MainActivity.this);
+                    dao.getGeoCode(getcoords(),query, MainActivity.this);
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -176,11 +185,17 @@ public class MainActivity extends AppCompatActivity {
                 lstView.setVisibility(view.GONE);
                 String destination = ((TextView)view).getText().toString();
 
-                // do the route getting display and UI changes into travel mode
-                // set zoom much lower to user, option for search, add end routing mode
-                // set up OSMbonus droid
+                String[] temp = destination.split(";");
+                String[] tempCoords = temp[2].split(",");
 
-                System.out.println(destination);
+                double[] dTempCoords = new double[2];
+                dTempCoords[0] = Double.parseDouble(tempCoords[0]);
+                dTempCoords[1] = Double.parseDouble(tempCoords[1]);
+
+                kmlDocument = new KmlDocument();
+                dao.getRoute(getcoords(),dTempCoords, MainActivity.this);
+
+
             }
         });
 
@@ -308,4 +323,17 @@ public class MainActivity extends AppCompatActivity {
         lstView.setAdapter(adapter);
     }
 
+    public void setUpKML(String geoJSON){
+        kmlDocument.parseGeoJSON(geoJSON);
+        KMLStyler styler = new KMLStyler();
+        FolderOverlay kmlOverlay = (FolderOverlay)kmlDocument.mKmlRoot.buildOverlay(map, null,styler, kmlDocument);
+
+        map.getOverlays().add(kmlOverlay);
+        IMapController mapController = map.getController();
+        mapController.setZoom(18);
+
+        searchView.setVisibility(View.GONE);
+
+        map.invalidate();
+    }
 }
