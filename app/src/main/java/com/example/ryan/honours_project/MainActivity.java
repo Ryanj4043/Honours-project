@@ -2,13 +2,14 @@ package com.example.ryan.honours_project;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.IntentSender;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -34,16 +35,14 @@ import com.google.android.gms.tasks.Task;
 import com.miguelcatalan.materialsearchview.MaterialSearchView;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.osmdroid.api.IMapController;
 import org.osmdroid.bonuspack.kml.KmlDocument;
-import org.osmdroid.bonuspack.routing.OSRMRoadManager;
-import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.FolderOverlay;
+import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
@@ -66,9 +65,13 @@ public class MainActivity extends AppCompatActivity {
     private DAO dao ;
     MaterialSearchView searchView;
     ListView lstView;
-    RoadManager roadManager;
     KmlDocument kmlDocument;
-
+    double[] target;
+    FolderOverlay kmlOverlay;
+    long mLastTime = 0; // milliseconds
+    double mSpeed = 0.0; // km/h
+    float mAzimuthAngleSpeed;
+    RotationGestureOverlay mRotationGestureOverlay;
 
     @SuppressLint("MissingPermission")
     @Override
@@ -87,8 +90,6 @@ public class MainActivity extends AppCompatActivity {
                 startLocationUpdates();
             }
         });
-        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-        StrictMode.setThreadPolicy(policy);
 
         task.addOnFailureListener(this, new OnFailureListener() {
             @Override
@@ -161,7 +162,6 @@ public class MainActivity extends AppCompatActivity {
 
                 try {
                     dao.getGeoCode(getcoords(),query, MainActivity.this);
-
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (JSONException e) {
@@ -192,6 +192,10 @@ public class MainActivity extends AppCompatActivity {
                 dTempCoords[0] = Double.parseDouble(tempCoords[0]);
                 dTempCoords[1] = Double.parseDouble(tempCoords[1]);
 
+                target = dTempCoords;
+                map.getOverlays().remove(kmlOverlay);
+                map.invalidate();
+
                 kmlDocument = new KmlDocument();
                 dao.getRoute(getcoords(),dTempCoords, MainActivity.this);
 
@@ -211,6 +215,12 @@ public class MainActivity extends AppCompatActivity {
         this.mLocationOverlay.enableMyLocation();
         map.getOverlays().add(this.mLocationOverlay);
 
+        //rotation guesters
+        mRotationGestureOverlay = new RotationGestureOverlay(this, map);
+        mRotationGestureOverlay.setEnabled(true);
+        map.setMultiTouchControls(true);
+        map.getOverlays().add(this.mRotationGestureOverlay);
+
 
         //continually centres map on user
         mLocationCallback = new LocationCallback() {
@@ -222,10 +232,43 @@ public class MainActivity extends AppCompatActivity {
                 for (Location location : locationResult.getLocations()) {
                     GeoPoint user= new GeoPoint(location.getLatitude(), location.getLongitude());
                     mCurrentLocation = location;
+                    mSpeed = mCurrentLocation.getSpeed() * 3.6;
                     System.out.println("UPDATE");
                     System.out.println(location.getLatitude());
                     System.out.println(location.getLongitude());
-                    mapController.setCenter(user);
+                    mapController.animateTo(user);
+                    if (mSpeed >= 0.1) {
+                        mAzimuthAngleSpeed = mCurrentLocation.getBearing();
+                    }
+
+
+                    if(target != null){
+                        double temp = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
+                        /*TextView textView  = findViewById(R.id.textOutput);
+                        textView.bringToFront();
+                        String output = "Distance: " + String.valueOf(temp) +"m" + "\r\n" + "Speed: " + mSpeed;
+
+                        textView.setText(output);*/
+
+                        map.setMapOrientation(-mAzimuthAngleSpeed);
+                        if(temp <= 5.0){
+                            //write alert
+                            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+                            alertDialog.setMessage("You have reached your destination");
+                            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            dialog.dismiss();
+                                        }
+                                    });
+                            alertDialog.show();
+                            target = null;
+                            map.getOverlays().remove(kmlOverlay);
+                            map.invalidate();
+                        }
+
+                    }
+
                 }
             }
         };
@@ -324,16 +367,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void setUpKML(String geoJSON){
+
         kmlDocument.parseGeoJSON(geoJSON);
         KMLStyler styler = new KMLStyler();
-        FolderOverlay kmlOverlay = (FolderOverlay)kmlDocument.mKmlRoot.buildOverlay(map, null,styler, kmlDocument);
+        kmlOverlay = (FolderOverlay)kmlDocument.mKmlRoot.buildOverlay(map, null,styler, kmlDocument);
 
         map.getOverlays().add(kmlOverlay);
         IMapController mapController = map.getController();
         mapController.setZoom(18);
 
         searchView.setVisibility(View.GONE);
-
         map.invalidate();
     }
+
+    public double distance(double lat1, double lat2, double lon1, double lon2){
+        final int R = 6371; // Radius of the earth
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double distance = R * c * 1000; // convert to meters
+
+        return distance;
+
+    }
+
 }

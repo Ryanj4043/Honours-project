@@ -110,7 +110,7 @@ public class DAO {
                url =  getUrlAddress() + "geocode/search?api_key=" + getApiKey() + "&text=" + info[0] + "&focus.point.lon=" +info[1] +"&focus.point.lat=" + info[2] + "&boundary.country=GBR";
                break;
            case "directions":
-               url =  getUrlAddress() + "directions?api_key=" + getApiKey() + "&coordinates=" + input + "&profile=foot-walking&preference=recommended&format=geojson&units=m";
+               url =  getUrlAddress() + "directions?api_key=" + getApiKey() + "&coordinates=" + input + "&profile=foot-walking&format=geojson&units=m";
                break;
        }
        return url;
