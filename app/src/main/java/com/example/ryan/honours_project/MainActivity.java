@@ -5,6 +5,10 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.IntentSender;
 import android.graphics.Color;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -50,7 +54,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener{
     private static final int REQUEST_CHECK_SETTINGS = 100;
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "upadtekey";
     MapView map = null;
@@ -72,6 +76,18 @@ public class MainActivity extends AppCompatActivity {
     double mSpeed = 0.0; // km/h
     float mAzimuthAngleSpeed;
     RotationGestureOverlay mRotationGestureOverlay;
+    double bearing;
+    double distance;
+    double azimuth;
+
+    public static SensorManager mSensorManager;
+    public static Sensor accelerometer;
+    public static Sensor magnetometer;
+
+    public static float[] mAccelerometer = null;
+    public static float[] mGeomagnetic = null;
+
+
 
     @SuppressLint("MissingPermission")
     @Override
@@ -113,6 +129,11 @@ public class MainActivity extends AppCompatActivity {
 
         //create instance
         super.onCreate(savedInstanceState);
+
+        //sets up sensors
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
         //sets up dao
         dao = new DAO(this);
@@ -168,7 +189,6 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
 
-                //setUpList();
                 return true;
             }
 
@@ -233,9 +253,9 @@ public class MainActivity extends AppCompatActivity {
                     GeoPoint user= new GeoPoint(location.getLatitude(), location.getLongitude());
                     mCurrentLocation = location;
                     mSpeed = mCurrentLocation.getSpeed() * 3.6;
-                    System.out.println("UPDATE");
+                    /*System.out.println("UPDATE");
                     System.out.println(location.getLatitude());
-                    System.out.println(location.getLongitude());
+                    System.out.println(location.getLongitude());*/
                     mapController.animateTo(user);
                     if (mSpeed >= 0.1) {
                         mAzimuthAngleSpeed = mCurrentLocation.getBearing();
@@ -243,15 +263,19 @@ public class MainActivity extends AppCompatActivity {
 
 
                     if(target != null){
-                        double temp = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
+                        distance = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
+                        bearing = getBearing(mCurrentLocation.getLatitude(),target[0],mCurrentLocation.getLongitude(), target[1]);
                         /*TextView textView  = findViewById(R.id.textOutput);
                         textView.bringToFront();
                         String output = "Distance: " + String.valueOf(temp) +"m" + "\r\n" + "Speed: " + mSpeed;
 
                         textView.setText(output);*/
 
+                        //begin haptic compass
+
+
                         map.setMapOrientation(-mAzimuthAngleSpeed);
-                        if(temp <= 5.0){
+                        if(distance <= 5.0){
                             //write alert
                             AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
                             alertDialog.setMessage("You have reached your destination");
@@ -272,37 +296,33 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
-
         updateValuesFromBundle(savedInstanceState);
     }
+
 
     public void onResume() {
         super.onResume();
         if (mRequestingLocationUpdates) {
             startLocationUpdates();
         }
-        //this will refresh the osmdroid configuration on resuming.
-        //if you make changes to the configuration, use
-        //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        //Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
-        map.onResume(); //needed for compass, my location overlays, v6.0.0 and up
+        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+        map.onResume();
 
     }
 
     public void onPause() {
         super.onPause();
         stopLocationUpdates();
-        //this will refresh the osmdroid configuration on resuming.
-        //if you make changes to the configuration, use
-        //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        //Configuration.getInstance().save(this, prefs);
-        map.onPause();  //needed for compass, my location overlays, v6.0.0 and up
+        mSensorManager.unregisterListener(this, accelerometer);
+        mSensorManager.unregisterListener(this, magnetometer);
+        map.onPause();
     }
 
     protected void createLocationRequest() {
         requests = LocationRequest.create();
         requests.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        requests.setInterval(1000);
+        requests.setInterval(1500);
         requests.setFastestInterval(500);
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(requests);
 
@@ -320,7 +340,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
-        // ...
         super.onSaveInstanceState(outState);
     }
 
@@ -374,7 +393,7 @@ public class MainActivity extends AppCompatActivity {
 
         map.getOverlays().add(kmlOverlay);
         IMapController mapController = map.getController();
-        mapController.setZoom(18);
+        mapController.setZoom(19);
 
         searchView.setVisibility(View.GONE);
         map.invalidate();
@@ -393,6 +412,60 @@ public class MainActivity extends AppCompatActivity {
 
         return distance;
 
+    }
+
+    /**
+     *
+     * @param lat1 lat of current position
+     * @param lat2 lat of destination
+     * @param lon1 long of current position
+     * @param lon2 long of destination
+     * @return The number of degrees between the user and their destination
+     */
+
+    public double getBearing(double lat1, double lat2, double lon1, double lon2){
+        double bearing = Math.atan2(lat2-lat1, lon2-lon1);
+
+        return 180+Math.toDegrees(bearing);
+    }
+
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        // onSensorChanged gets called for each sensor so we have to remember the values
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            mAccelerometer = event.values;
+        }
+
+        if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            mGeomagnetic = event.values;
+        }
+
+        if (mAccelerometer != null && mGeomagnetic != null) {
+            float R[] = new float[9];
+            float I[] = new float[9];
+            boolean success = SensorManager.getRotationMatrix(R, I, mAccelerometer, mGeomagnetic);
+
+            if (success) {
+                float orientation[] = new float[3];
+                SensorManager.getOrientation(R, orientation);
+                // at this point, orientation contains the azimuth(direction), pitch and roll values.
+                azimuth = 180 * orientation[0] / Math.PI;
+                if(target != null) {
+                    double modifer = 5;
+
+                    bearing = getBearing(mCurrentLocation.getLatitude(), target[0], mCurrentLocation.getLongitude(), target[1]);
+                    double diff = Math.abs(bearing - azimuth);
+                    double tolerance = (bearing / 100) * modifer;
+                    if (diff < tolerance) {
+                        System.out.println(diff);
+                    }
+                }
+
+            }
+        }
     }
 
 }
