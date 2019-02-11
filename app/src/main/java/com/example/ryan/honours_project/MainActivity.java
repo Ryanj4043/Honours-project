@@ -1,8 +1,8 @@
 package com.example.ryan.honours_project;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.IntentSender;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -10,10 +10,13 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
-import android.support.v7.app.AlertDialog;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -23,6 +26,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -38,7 +42,9 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.miguelcatalan.materialsearchview.MaterialSearchView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.osmdroid.api.IMapController;
 import org.osmdroid.bonuspack.kml.KmlDocument;
 import org.osmdroid.config.Configuration;
@@ -52,14 +58,13 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener{
     private static final int REQUEST_CHECK_SETTINGS = 100;
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "upadtekey";
     MapView map = null;
-    private static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 218;
-    private static final int MY_PERMISSIONS_ACCESS_EXTERNAL_STORAGE = 318;
     private MyLocationNewOverlay mLocationOverlay;
     private FusedLocationProviderClient mFusedLocationClient;
     private Location mCurrentLocation;
@@ -72,13 +77,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     KmlDocument kmlDocument;
     double[] target;
     FolderOverlay kmlOverlay;
-    long mLastTime = 0; // milliseconds
     double mSpeed = 0.0; // km/h
     float mAzimuthAngleSpeed;
     RotationGestureOverlay mRotationGestureOverlay;
     double bearing;
     double distance;
     double azimuth;
+    double lastBuzz = 0;
+
+    JSONObject route;
+    ArrayList<double[]> waypoints = new ArrayList<>();
+
+    Vibrator v;
+    VibrationEffect vRight;
 
     public static SensorManager mSensorManager;
     public static Sensor accelerometer;
@@ -86,9 +97,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public static float[] mAccelerometer = null;
     public static float[] mGeomagnetic = null;
+    long lastBuzzTime = 0;
+    long current = System.currentTimeMillis();
 
 
-
+    @TargetApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,6 +142,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //create instance
         super.onCreate(savedInstanceState);
+
+        //set up vibrate
+        v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        long[] patternR = {0, 2000, 750};
+
+        vRight = VibrationEffect.createWaveform(patternR,0);
 
         //sets up sensors
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
@@ -253,9 +272,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     GeoPoint user= new GeoPoint(location.getLatitude(), location.getLongitude());
                     mCurrentLocation = location;
                     mSpeed = mCurrentLocation.getSpeed() * 3.6;
-                    /*System.out.println("UPDATE");
-                    System.out.println(location.getLatitude());
-                    System.out.println(location.getLongitude());*/
                     mapController.animateTo(user);
                     if (mSpeed >= 0.1) {
                         mAzimuthAngleSpeed = mCurrentLocation.getBearing();
@@ -265,27 +281,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     if(target != null){
                         distance = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
                         bearing = getBearing(mCurrentLocation.getLatitude(),target[0],mCurrentLocation.getLongitude(), target[1]);
-                        /*TextView textView  = findViewById(R.id.textOutput);
-                        textView.bringToFront();
-                        String output = "Distance: " + String.valueOf(temp) +"m" + "\r\n" + "Speed: " + mSpeed;
-
-                        textView.setText(output);*/
-
-                        //begin haptic compass
-
-
                         map.setMapOrientation(-mAzimuthAngleSpeed);
+                        determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude());
                         if(distance <= 5.0){
-                            //write alert
-                            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-                            alertDialog.setMessage("You have reached your destination");
-                            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                                    new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            dialog.dismiss();
-                                        }
-                                    });
-                            alertDialog.show();
+                            callToast();
                             target = null;
                             map.getOverlays().remove(kmlOverlay);
                             map.invalidate();
@@ -360,10 +359,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //updateUI();
     }
 
-    private Location getmCurrentLocation(){
-        return this.mCurrentLocation;
-    }
-
     private double[] getcoords(){
         double[] output = new double[2];
         output[0] = mCurrentLocation.getLongitude();
@@ -387,17 +382,38 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void setUpKML(String geoJSON){
 
+        System.out.println(geoJSON);
+
         kmlDocument.parseGeoJSON(geoJSON);
+        try {
+            route = new JSONObject(geoJSON);
+            JSONArray wayPoints = route.getJSONArray("features").getJSONObject(0).getJSONObject("geometry").getJSONArray("coordinates");
+            for(int i = 0; i < wayPoints.length(); i++){
+                waypoints.add(new double[]{wayPoints.getJSONArray(i).getDouble(0), wayPoints.getJSONArray(i).getDouble(1)});
+                System.out.println(waypoints.get(i)[0]);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
         KMLStyler styler = new KMLStyler();
         kmlOverlay = (FolderOverlay)kmlDocument.mKmlRoot.buildOverlay(map, null,styler, kmlDocument);
 
         map.getOverlays().add(kmlOverlay);
         IMapController mapController = map.getController();
-        mapController.setZoom(19);
+        mapController.setZoom(20);
 
         searchView.setVisibility(View.GONE);
         map.invalidate();
     }
+
+    /**
+     *
+     * @param lat1 lat of current position
+     * @param lat2 lat of destination
+     * @param lon1 long of current position
+     * @param lon2 long of destination
+     * @return distance
+     */
 
     public double distance(double lat1, double lat2, double lon1, double lon2){
         final int R = 6371; // Radius of the earth
@@ -432,6 +448,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onSensorChanged(SensorEvent event) {
         // onSensorChanged gets called for each sensor so we have to remember the values
@@ -454,18 +471,78 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 // at this point, orientation contains the azimuth(direction), pitch and roll values.
                 azimuth = 180 * orientation[0] / Math.PI;
                 if(target != null) {
-                    double modifer = 5;
-
                     bearing = getBearing(mCurrentLocation.getLatitude(), target[0], mCurrentLocation.getLongitude(), target[1]);
                     double diff = Math.abs(bearing - azimuth);
-                    double tolerance = (bearing / 100) * modifer;
-                    if (diff < tolerance) {
+                    double dDiff = Math.abs(diff-lastBuzz);
+                    long timeElapsed = current - lastBuzzTime;
+                    current = System.currentTimeMillis();
+                    if(dDiff >= 5 && timeElapsed >= 2000) {
+
+                        if ((diff <= 344 && diff >= 16)) {
+                            v.cancel();
+                            System.out.println("Almost there");
+                            lastBuzzTime = System.currentTimeMillis();
+                        } else if (diff <= 15 || (diff <= 360 && diff >= 345)) {
+                            v.cancel();
+                            System.out.println("Bingo");
+                            v.vibrate(vRight);
+                            lastBuzzTime = System.currentTimeMillis();
+                            callToast();
+                        }
+                        lastBuzz = diff;
                         System.out.println(diff);
                     }
+
                 }
 
             }
         }
     }
+
+    public void callToast(){
+        Toast.makeText(this, "BINGO!", Toast.LENGTH_SHORT).show();
+    }
+
+
+    public void removedwaypoints(double userLat, double userLong){
+        for(int i = 0; i <= waypoints.size(); i++){
+            if(distance(userLat,waypoints.get(i)[1],userLong,waypoints.get(i)[0]) <= 4){
+                waypoints.remove(i);
+            }
+        }
+    }
+
+    public boolean determineOnRoute(double userLat, double userLong){
+        boolean tf = true;
+        double maxD = 7.5;
+        double y1 = waypoints.get(0)[1];
+        double y2 = waypoints.get(1)[1];
+        double x1 = waypoints.get(0)[0];
+        double x2 = waypoints.get(1)[0];
+        double m = y2-y1/x2-x1 ;
+
+        double posEndX = userLong - x1;
+        double posEndY = userLat - y1;
+        double vectorX = x2-x1;
+        double vectorY = y2-y1;
+        double vectorOrathogonalY = -vectorY;
+        double vectorOrathogonalX = vectorX;
+
+        double j = posEndX * vectorOrathogonalY + posEndY * vectorOrathogonalX;
+        double len_sq = vectorOrathogonalY * vectorOrathogonalY + vectorOrathogonalX * vectorOrathogonalX;
+
+        double distance = j*j/len_sq;
+
+        /*create all the lines
+        get of those lines
+
+        get user points and determine which line and point they are closest to in coordinates
+        then do distance
+
+        if >7.5 away, is off track and prompt user*/
+
+        return tf;
+    }
+
 
 }

@@ -13,7 +13,7 @@ public class SplashActivity extends AppCompatActivity {
 
     private static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 218;
     private static final int MY_PERMISSIONS_ACCESS_EXTERNAL_STORAGE = 318;
-
+    private static final int MY_PERMISSIONS_ACCESS_VIBRATION = 418;
 
 
     @SuppressLint("MissingPermission")
@@ -41,6 +41,14 @@ public class SplashActivity extends AppCompatActivity {
             } else {
                 // No explanation needed; request the permission
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, MY_PERMISSIONS_ACCESS_EXTERNAL_STORAGE);
+            }
+        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.VIBRATE) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.VIBRATE)) {
+            } else {
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.VIBRATE}, MY_PERMISSIONS_ACCESS_VIBRATION);
             }
         }
         return true;
