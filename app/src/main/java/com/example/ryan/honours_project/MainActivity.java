@@ -382,7 +382,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void setUpKML(String geoJSON){
 
-        System.out.println(geoJSON);
+        //System.out.println(geoJSON);
 
         kmlDocument.parseGeoJSON(geoJSON);
         try {
@@ -438,7 +438,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      * @param lon2 long of destination
      * @return The number of degrees between the user and their destination
      */
-
     public double getBearing(double lat1, double lat2, double lon1, double lon2){
         double bearing = Math.atan2(lat2-lat1, lon2-lon1);
 
@@ -480,11 +479,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                         if ((diff <= 344 && diff >= 16)) {
                             v.cancel();
-                            System.out.println("Almost there");
+                            //System.out.println("Almost there");
                             lastBuzzTime = System.currentTimeMillis();
                         } else if (diff <= 15 || (diff <= 360 && diff >= 345)) {
                             v.cancel();
-                            System.out.println("Bingo");
+                            //System.out.println("Bingo");
                             v.vibrate(vRight);
                             lastBuzzTime = System.currentTimeMillis();
                             callToast();
@@ -515,23 +514,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public boolean determineOnRoute(double userLat, double userLong){
         boolean tf = true;
         double maxD = 7.5;
+        //latitudes
         double y1 = waypoints.get(0)[1];
         double y2 = waypoints.get(1)[1];
+        //longitudes
         double x1 = waypoints.get(0)[0];
         double x2 = waypoints.get(1)[0];
-        double m = y2-y1/x2-x1 ;
 
-        double posEndX = userLong - x1;
-        double posEndY = userLat - y1;
-        double vectorX = x2-x1;
-        double vectorY = y2-y1;
-        double vectorOrathogonalY = -vectorY;
-        double vectorOrathogonalX = vectorX;
-
-        double j = posEndX * vectorOrathogonalY + posEndY * vectorOrathogonalX;
-        double len_sq = vectorOrathogonalY * vectorOrathogonalY + vectorOrathogonalX * vectorOrathogonalX;
-
-        double distance = j*j/len_sq;
+        System.out.println("y1 " + y1 );
+        System.out.println("y2 " + y2 );
+        System.out.println("x1 " + x1 );
+        System.out.println("x2 " + x2 );
 
         /*create all the lines
         get of those lines
