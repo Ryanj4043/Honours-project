@@ -22,7 +22,8 @@
         android:layout_height="fill_parent"
         android:divider="#806326"
         android:dividerHeight="1dp"
-        android:listSelector="@color/colorPrimaryDark"/>
+        android:listSelector="@color/colorPrimaryDark"
+        android:visibility="gone"/>
 
 
     <com.miguelcatalan.materialsearchview.MaterialSearchView

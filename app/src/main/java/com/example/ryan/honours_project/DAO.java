@@ -30,7 +30,7 @@ public class DAO {
     public void getGeoCode(double[] start, String input, final Context context) throws IOException, JSONException {
         input = input + "," + String.valueOf(start[0]) + "," + String.valueOf(start[1]);
         String url = urlBuilder(input, "geocode");
-        final String[] geocode = new String[10];
+        final String[][] geocode = new String[1][1];
 
         // Request a string response from the provided URL.
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -41,13 +41,13 @@ public class DAO {
                             JSONObject output = new JSONObject(response);
 
                             JSONArray arr = output.getJSONArray("features");
+                            geocode[0] = new String[arr.length()];
                             for(int i = 0; i < arr.length(); i++){
-                                geocode[i] = arr.getJSONObject(i).getJSONObject("properties").getString("label")+ ";" + arr.getJSONObject(i).getJSONObject("properties").getString("distance") + ";" + arr.getJSONObject(i).getJSONObject("geometry").getJSONArray("coordinates").getDouble(1) +"," + arr.getJSONObject(i).getJSONObject("geometry").getJSONArray("coordinates").getDouble(0) ;
-                                System.out.println(geocode[i]);
-
+                                geocode[0][i] = arr.getJSONObject(i).getJSONObject("properties").getString("label")+ ";" + arr.getJSONObject(i).getJSONObject("properties").getString("distance") + ";" + arr.getJSONObject(i).getJSONObject("geometry").getJSONArray("coordinates").getDouble(1) +"," + arr.getJSONObject(i).getJSONObject("geometry").getJSONArray("coordinates").getDouble(0) ;
+                                System.out.println(geocode[0][i]);
                             }
                             MainActivity ma = (MainActivity)context;
-                            ma.setUpList(geocode);
+                            ma.setUpList(geocode[0]);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
