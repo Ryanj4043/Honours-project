@@ -276,15 +276,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     if (mSpeed >= 0.1) {
                         mAzimuthAngleSpeed = mCurrentLocation.getBearing();
                     }
-
-
                     if(target != null){
                         distance = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
                         bearing = getBearing(mCurrentLocation.getLatitude(),target[0],mCurrentLocation.getLongitude(), target[1]);
                         map.setMapOrientation(-mAzimuthAngleSpeed);
-                        determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude());
+                        if(determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude())){
+                            callToast("Off track!");
+                        }
                         if(distance <= 5.0){
-                            callToast();
+                            callToast("Arrived at your destination!");
                             target = null;
                             map.getOverlays().remove(kmlOverlay);
                             map.invalidate();
@@ -486,7 +486,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             //System.out.println("Bingo");
                             v.vibrate(vRight);
                             lastBuzzTime = System.currentTimeMillis();
-                            callToast();
+                            callToast("You're on the right track!");
                         }
                         lastBuzz = diff;
                         System.out.println(diff);
@@ -498,8 +498,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    public void callToast(){
-        Toast.makeText(this, "BINGO!", Toast.LENGTH_SHORT).show();
+    public void callToast(String message){
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
 
@@ -520,22 +520,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //longitudes
         double x1 = waypoints.get(0)[0];
         double x2 = waypoints.get(1)[0];
+        //gradient of line
+        double m = (y2-y1)/(x2-x1);
+        //constant
+        double c =y1-m*x1;
 
-        System.out.println("y1 " + y1 );
-        System.out.println("y2 " + y2 );
-        System.out.println("x1 " + x1 );
-        System.out.println("x2 " + x2 );
+        //perpendicular line
+        double mp = -1/m;
+        double cp = userLat-mp*userLong;
 
-        /*create all the lines
-        get of those lines
-
-        get user points and determine which line and point they are closest to in coordinates
-        then do distance
-
-        if >7.5 away, is off track and prompt user*/
-
+        //find common point
+        double x = (cp - c) / (m - mp);
+        double y = m * x + c;
+        System.out.println(distance(userLat,y,userLong,x));
+        if(distance(userLat,y,userLong,x) >= maxD){
+            System.out.println("False: ");
+            System.out.println(distance(userLat,y,userLong,x));
+        }
         return tf;
     }
-
 
 }
