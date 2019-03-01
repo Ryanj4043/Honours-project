@@ -17,7 +17,7 @@ class KMLStyler implements KmlFeature.Styler  {
     @Override
     public void onLineString(Polyline polyline, KmlPlacemark kmlPlacemark, KmlLineString kmlLineString){
         polyline.setWidth(Math.max(kmlLineString.mCoordinates.size()/200.0f, 3.0f));
-        polyline.setColor(Color.BLUE);
+        polyline.setColor(Color.parseColor("#303F9F"));
     }
 
     @Override

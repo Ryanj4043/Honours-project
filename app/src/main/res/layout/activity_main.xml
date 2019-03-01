@@ -6,26 +6,14 @@
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-
     tools:context=".MainActivity">
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_height="?attr/actionBarSize"
         android:layout_width="match_parent"
-        android:background="@color/colorPrimary"/>
-
-
-    <ListView
-        android:id="@+id/lstView"
-        android:layout_width="match_parent"
-        android:layout_height="fill_parent"
-        android:divider="#806326"
-        android:dividerHeight="1dp"
-        android:listSelector="@color/colorPrimaryDark"
-        android:visibility="gone"/>
-
-
+        android:background="@drawable/my_border"
+        />
     <com.miguelcatalan.materialsearchview.MaterialSearchView
         android:id="@+id/search_view"
         android:layout_width="match_parent"
@@ -38,10 +26,20 @@
         android:textColor="#FFFFFF"
         android:textColorHint="#FFFFFF"
         />
+    <ListView
+        android:id="@+id/lstView"
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"
+        android:divider="@color/colorAccent"
+        android:dividerHeight="1dp"
+        android:listSelector="@color/colorPrimaryDark"
+        android:visibility="gone"
+        />
+
 
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent" />
+        android:layout_height="fill_parent"/>
 
 </LinearLayout>

@@ -185,7 +185,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onSearchViewShown() {
                 searchView.setVisibility(View.VISIBLE);
             }
-
             @Override
             public void onSearchViewClosed() {
                 lstView.setVisibility(View.GONE);
@@ -217,6 +216,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
 
         });
+
+
 
         lstView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -289,7 +290,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             map.getOverlays().remove(kmlOverlay);
                             map.invalidate();
                         }
-
                     }
 
                 }
