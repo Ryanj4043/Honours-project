@@ -282,7 +282,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         bearing = getBearing(mCurrentLocation.getLatitude(),target[0],mCurrentLocation.getLongitude(), target[1]);
                         map.setMapOrientation(-mAzimuthAngleSpeed);
                         if(determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude())){
-                            callToast("Off track!");
+                            //callToast("Off track!");
                         }
                         if(distance <= 5.0){
                             callToast("Arrived at your destination!");
@@ -476,20 +476,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     long timeElapsed = current - lastBuzzTime;
                     current = System.currentTimeMillis();
                     if(dDiff >= 5 && timeElapsed >= 2000) {
-
+                        System.out.println("Diff: " + diff);
                         if ((diff <= 344 && diff >= 16)) {
                             v.cancel();
-                            //System.out.println("Almost there");
                             lastBuzzTime = System.currentTimeMillis();
                         } else if (diff <= 15 || (diff <= 360 && diff >= 345)) {
-                            v.cancel();
+                            //v.cancel();
                             //System.out.println("Bingo");
                             v.vibrate(vRight);
                             lastBuzzTime = System.currentTimeMillis();
                             callToast("You're on the right track!");
                         }
                         lastBuzz = diff;
-                        System.out.println(diff);
+
                     }
 
                 }
@@ -532,11 +531,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //find common point
         double x = (cp - c) / (m - mp);
         double y = m * x + c;
-        System.out.println(distance(userLat,y,userLong,x));
-        if(distance(userLat,y,userLong,x) >= maxD){
+        //System.out.println(distance(userLat,y,userLong,x));
+        /*if(distance(userLat,y,userLong,x) >= maxD){
             System.out.println("False: ");
             System.out.println(distance(userLat,y,userLong,x));
-        }
+        }*/
         return tf;
     }
 
