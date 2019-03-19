@@ -2,7 +2,10 @@ package com.example.ryan.honours_project;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.IntentSender;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -24,6 +27,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -84,6 +89,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     double distance;
     double azimuth;
     double lastBuzz = 0;
+
+    ImageView left;
+    ImageView middle;
+    ImageView right;
+    LinearLayout navBar;
+
+    AlertDialog dialog;
 
     JSONObject route;
     ArrayList<double[]> waypoints = new ArrayList<>();
@@ -217,6 +229,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         });
 
+        //set up visual cues
+        left = findViewById(R.id.left);
+        right = findViewById(R.id.right);
+        middle = findViewById(R.id.middle);
+        navBar = findViewById(R.id.barView);
 
 
         lstView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -261,6 +278,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         map.setMultiTouchControls(true);
         map.getOverlays().add(this.mRotationGestureOverlay);
 
+        onCreateDialog();
 
         //continually centres map on user
         mLocationCallback = new LocationCallback() {
@@ -270,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     return;
                 }
                 for (Location location : locationResult.getLocations()) {
-                    GeoPoint user= new GeoPoint(location.getLatitude(), location.getLongitude());
+                    GeoPoint user=  new GeoPoint(location.getLatitude(), location.getLongitude());
                     mCurrentLocation = location;
                     mSpeed = mCurrentLocation.getSpeed() * 3.6;
                     mapController.animateTo(user);
@@ -281,8 +299,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         distance = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
                         bearing = getBearing(mCurrentLocation.getLatitude(),target[0],mCurrentLocation.getLongitude(), target[1]);
                         map.setMapOrientation(-mAzimuthAngleSpeed);
-                        if(determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude())){
+                        if(!determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude())){
                             //callToast("Off track!");
+                            dialog.show();
                         }
                         if(distance <= 5.0){
                             callToast("Arrived at your destination!");
@@ -476,6 +495,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     long timeElapsed = current - lastBuzzTime;
                     current = System.currentTimeMillis();
                     if(dDiff >= 5 && timeElapsed >= 2000) {
+                        navBar.setVisibility(View.GONE);
+                        middle.setVisibility(View.GONE);
                         System.out.println("Diff: " + diff);
                         if ((diff <= 344 && diff >= 16)) {
                             v.cancel();
@@ -486,6 +507,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             v.vibrate(vRight);
                             lastBuzzTime = System.currentTimeMillis();
                             callToast("You're on the right track!");
+                            navBar.setVisibility(View.VISIBLE);
+                            middle.setVisibility(View.VISIBLE);
                         }
                         lastBuzz = diff;
 
@@ -532,11 +555,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double x = (cp - c) / (m - mp);
         double y = m * x + c;
         //System.out.println(distance(userLat,y,userLong,x));
-        /*if(distance(userLat,y,userLong,x) >= maxD){
+        if(distance(userLat,y,userLong,x) >= maxD){
             System.out.println("False: ");
             System.out.println(distance(userLat,y,userLong,x));
-        }*/
+            tf = false;
+        }
         return tf;
     }
 
+    public Dialog onCreateDialog(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setMessage("You are off Track! Would you like to reroute to your destination?");
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dao.getRoute(getcoords(), target, MainActivity.this);
+            }
+        });
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // User cancelled the dialog
+            }
+        });
+        dialog = builder.create();
+
+        return dialog;
+    }
 }
