@@ -27,6 +27,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -95,6 +96,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     ImageView right;
     LinearLayout navBar;
 
+    ImageButton imageButton;
+
     AlertDialog dialog;
 
     JSONObject route;
@@ -111,6 +114,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public static float[] mGeomagnetic = null;
     long lastBuzzTime = 0;
     long current = System.currentTimeMillis();
+
+    private boolean redirectChoice = true;
 
 
     @TargetApi(Build.VERSION_CODES.O)
@@ -229,6 +234,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         });
 
+        //set up redirect button
+        imageButton = findViewById(R.id.redirectButton);
+        imageButton.setOnClickListener(new View.OnClickListener(){
+
+            @Override
+            public void onClick(View view) {
+                if(target != null){
+                    dao.getRoute(getcoords(),target, MainActivity.this);
+                }
+            }
+        });
+
         //set up visual cues
         left = findViewById(R.id.left);
         right = findViewById(R.id.right);
@@ -299,7 +316,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         distance = distance(location.getLatitude(),target[0],location.getLongitude(), target[1]);
                         bearing = getBearing(mCurrentLocation.getLatitude(),target[0],mCurrentLocation.getLongitude(), target[1]);
                         map.setMapOrientation(-mAzimuthAngleSpeed);
-                        if(!determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude())){
+                        if(!determineOnRoute(mCurrentLocation.getLatitude(),mCurrentLocation.getLongitude()) && redirectChoice == true){
                             //callToast("Off track!");
                             dialog.show();
                         }
@@ -372,10 +389,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     REQUESTING_LOCATION_UPDATES_KEY);
         }
 
-        // ...
-
-        // Update UI to match restored state
-        //updateUI();
     }
 
     private double[] getcoords(){
@@ -401,7 +414,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void setUpKML(String geoJSON){
 
-        //System.out.println(geoJSON);
+        if(kmlOverlay != null){
+            map.getOverlays().remove(kmlOverlay);
+        }
+
+        imageButton.setVisibility(View.VISIBLE);
 
         kmlDocument.parseGeoJSON(geoJSON);
         try {
@@ -410,6 +427,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             for(int i = 0; i < wayPoints.length(); i++){
                 waypoints.add(new double[]{wayPoints.getJSONArray(i).getDouble(0), wayPoints.getJSONArray(i).getDouble(1)});
                 System.out.println(waypoints.get(i)[0]);
+                System.out.println(waypoints.get(i)[1]);
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -497,13 +515,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     if(dDiff >= 5 && timeElapsed >= 2000) {
                         navBar.setVisibility(View.GONE);
                         middle.setVisibility(View.GONE);
+                        right.setVisibility(View.GONE);
+                        left.setVisibility(View.GONE);
                         System.out.println("Diff: " + diff);
-                        if ((diff <= 344 && diff >= 16)) {
+                        if ((diff <= 344 && diff >= 180)) {
+                            navBar.setVisibility(View.VISIBLE);
+                            left.setVisibility(View.VISIBLE);
                             v.cancel();
                             lastBuzzTime = System.currentTimeMillis();
-                        } else if (diff <= 15 || (diff <= 360 && diff >= 345)) {
-                            //v.cancel();
-                            //System.out.println("Bingo");
+                        } else if ((diff <= 180 && diff >= 21)) {
+                            navBar.setVisibility(View.VISIBLE);
+                            right.setVisibility(View.VISIBLE);
+                            v.cancel();
+                            lastBuzzTime = System.currentTimeMillis();
+                        } else if (diff <= 20 || (diff <= 360 && diff >= 340)) {
                             v.vibrate(vRight);
                             lastBuzzTime = System.currentTimeMillis();
                             callToast("You're on the right track!");
@@ -525,41 +550,39 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
 
-    public void removedwaypoints(double userLat, double userLong){
-        for(int i = 0; i <= waypoints.size(); i++){
-            if(distance(userLat,waypoints.get(i)[1],userLong,waypoints.get(i)[0]) <= 4){
-                waypoints.remove(i);
-            }
-        }
-    }
 
     public boolean determineOnRoute(double userLat, double userLong){
-        boolean tf = true;
-        double maxD = 7.5;
-        //latitudes
-        double y1 = waypoints.get(0)[1];
-        double y2 = waypoints.get(1)[1];
-        //longitudes
-        double x1 = waypoints.get(0)[0];
-        double x2 = waypoints.get(1)[0];
-        //gradient of line
-        double m = (y2-y1)/(x2-x1);
-        //constant
-        double c =y1-m*x1;
+        boolean tf = false;
+        double maxD = 10;
 
-        //perpendicular line
-        double mp = -1/m;
-        double cp = userLat-mp*userLong;
+        for(int i = 0; i < waypoints.size()-1; i++){
 
-        //find common point
-        double x = (cp - c) / (m - mp);
-        double y = m * x + c;
-        //System.out.println(distance(userLat,y,userLong,x));
-        if(distance(userLat,y,userLong,x) >= maxD){
-            System.out.println("False: ");
-            System.out.println(distance(userLat,y,userLong,x));
-            tf = false;
+            //latitudes
+            double y1 = waypoints.get(i)[1];
+            double y2 = waypoints.get(i+1)[1];
+
+            //longitudes
+            double x1 = waypoints.get(i)[0];
+            double x2 = waypoints.get(i+1)[0];
+            //gradient of line
+            double m = (y2-y1)/(x2-x1);
+            //constant
+            double c =y1-m*x1;
+
+            //perpendicular line
+            double mp = -1/m;
+            double cp = userLat-mp*userLong;
+
+            //find common point
+            double x = (cp - c) / (m - mp);
+            double y = m * x + c;
+
+            if(distance(userLat,y,userLong,x) <= maxD){
+
+                tf = true;
+            }
         }
+        System.out.println(tf);
         return tf;
     }
 
@@ -571,11 +594,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 dao.getRoute(getcoords(), target, MainActivity.this);
             }
         });
-        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+        builder.setNeutralButton("No", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
                 // User cancelled the dialog
             }
         });
+        builder.setNegativeButton("No, and turn this off", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // User cancelled the dialog
+                redirectChoice = false;
+            }
+        });
+
         dialog = builder.create();
 
         return dialog;

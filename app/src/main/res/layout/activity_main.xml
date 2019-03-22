@@ -26,15 +26,6 @@
         android:textColor="#FFFFFF"
         android:textColorHint="#FFFFFF"
         />
-    <ListView
-        android:id="@+id/lstView"
-        android:layout_width="match_parent"
-        android:layout_height="fill_parent"
-        android:divider="@color/colorAccent"
-        android:dividerHeight="1dp"
-        android:listSelector="@color/colorPrimaryDark"
-        android:visibility="gone"
-        />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -69,6 +60,29 @@
             android:visibility="invisible"/>
 
     </LinearLayout>
+
+    <ListView
+        android:id="@+id/lstView"
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"
+        android:divider="@color/colorAccent"
+        android:dividerHeight="1dp"
+        android:listSelector="@color/colorPrimaryDark"
+        android:visibility="gone"
+        />
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/redirectButton"
+            android:src="@drawable/redirect"
+            android:visibility="gone"
+            />
+    </FrameLayout>
+
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="fill_parent"
