@@ -242,6 +242,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(View view) {
                 if(target != null){
                     dao.getRoute(getcoords(),target, MainActivity.this);
+                    redirectChoice = true;
                 }
             }
         });
