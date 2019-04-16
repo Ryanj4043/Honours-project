@@ -18,7 +18,7 @@ import java.io.IOException;
 
 public class DAO {
     private String urlAddress = "https://api.openrouteservice.org/";
-    private String apiKey = "58d904a497c67e00015b45fcc64a2bb86b5e4b428299a5d1cbb9b2a0";
+    private String apiKey = "[YOUR API KEY HERE]";
     RequestQueue queue;
 
 

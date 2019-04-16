@@ -335,7 +335,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         updateValuesFromBundle(savedInstanceState);
     }
 
-
     public void onResume() {
         super.onResume();
         if (mRequestingLocationUpdates) {
@@ -549,7 +548,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void callToast(String message){
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
-
 
 
     public boolean determineOnRoute(double userLat, double userLong){
